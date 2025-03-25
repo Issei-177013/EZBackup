@@ -320,10 +320,9 @@ toggle_directories() {
 }
 
 mysql_backup_template() {
-    print "[MYSQL BACKUP TEMPLATE]\n"
-    print "Creating MySQL backup..."
+    log "Checking MySQL Backup Configuration..."
 
-    # Input for MySQL credentials (hostname, username, password, and database name)
+    # دریافت اطلاعات دیتابیس
     input "Enter MySQL hostname (default: localhost): " MYSQL_HOST
     MYSQL_HOST="${MYSQL_HOST:-localhost}"
 
@@ -334,33 +333,32 @@ mysql_backup_template() {
 
     input "Enter the database name to backup: " MYSQL_DATABASE
 
-    if [ -z "$MYSQL_PASSWORD" ]; then
-        wrong "MySQL password is required!"
-        return
+    # بررسی صحت مقادیر ورودی
+    if [ -z "$MYSQL_PASSWORD" ] || [ -z "$MYSQL_DATABASE" ] || [ -z "$MYSQL_USER" ]; then
+        error "Invalid MySQL credentials or database name."
+        return 1
     fi
 
-    if [ -z "$MYSQL_DATABASE" ]; then
-        wrong "Database name is required!"
-        return
-    fi
+    # تنظیم مسیر ذخیره فایل بکاپ
+    local DB_PATH="/root/_${MYSQL_DATABASE}${DATABASE_SUFFIX}"
 
-    # Generate the backup file name
-    BACKUP_FILE="${MYSQL_DATABASE}_backup_$(date +'%Y%m%d%H%M%S')${DATABASE_SUFFIX}"
+    # ایجاد دستور بکاپ‌گیری
+    BACKUP_DB_COMMAND="mysqldump -h '$MYSQL_HOST' -u '$MYSQL_USER' -p'$MYSQL_PASSWORD' '$MYSQL_DATABASE' > '$DB_PATH'"
 
-    # Perform the MySQL database backup
-    log "Backing up MySQL database $MYSQL_DATABASE..."
-    mysqldump -h "$MYSQL_HOST" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" "$MYSQL_DATABASE" > "/root/$BACKUP_FILE" || error "Failed to back up MySQL database"
+    # اضافه کردن مسیر بکاپ به آرایه
+    DIRECTORIES+=("$DB_PATH")
 
-    success "MySQL database backup created: $BACKUP_FILE"
+    # تنظیم متغیرهای بکاپ
+    BACKUP_DIRECTORIES="${DIRECTORIES[*]}"
 
-    # Ask if the user wants to compress the backup
-    input "Do you want to compress the backup? (y/n): " COMPRESS_CHOICE
-    if [[ "$COMPRESS_CHOICE" =~ ^[Yy]$ ]]; then
-        log "Compressing the backup file..."
-        zip -r "/root/$BACKUP_FILE.zip" "/root/$BACKUP_FILE" || error "Failed to compress backup"
-        rm "/root/$BACKUP_FILE"  # Remove uncompressed backup after compression
-        success "Backup compressed into $BACKUP_FILE.zip"
-    fi
+    # اجرای بکاپ
+    log "Backing up MySQL database: $MYSQL_DATABASE..."
+    eval "$BACKUP_DB_COMMAND" || { error "MySQL backup failed!"; return 1; }
+
+    success "MySQL database backup created: $DB_PATH"
+
+    log "Complete MySQL Backup"
+    confirm
 }
 
 generate_password() {
