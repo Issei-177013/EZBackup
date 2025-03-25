@@ -70,7 +70,7 @@ update_os() {
 
 install_dependencies() {
     local package_manager=$(detect_package_manager)
-    local packages=("wget" "zip" "cron" "msmtp" "mutt")
+    local packages=("wget" "zip" "cron" "msmtp" "mutt" "figlet")
 
     log "Installing dependencies: ${packages[*]}..."
     
@@ -117,6 +117,10 @@ menu() {
     install_yq
     while true; do
         clear
+        
+        figlet "EZBackup"
+        
+        print "======== By Issei-177013 ========"
         print "======== EZBackup Menu [$VERSION] ========"
         print ""
         print "1️) Install EZBackup"
